@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Lean & Simulação de Fluxo - Posto de Saúde</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#035485',
+                        },
+                        leanOrange: {
+                            500: '#f97316',
+                            600: '#ea580c',
+                        },
+                        leanRed: {
+                            500: '#ef4444',
+                        },
+                        leanGreen: {
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .gradient-header {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        }
+        .gradient-orange {
+            background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation / Header -->
+    <header class="gradient-header text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/20">
+                    <i class="fa-solid font-bold fa-stethoscopes text-2xl text-amber-300"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold px-2 py-0.5 bg-amber-400 text-slate-900 rounded-full uppercase tracking-wider">Jornada GERAR</span>
+                        <span class="text-xs text-slate-200">Posto de Saúde</span>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">Diagnóstico Lean e Simulação do Fluxo</h1>
+                </div>
+            </div>
+            
+            <!-- Quick Mode Switcher -->
+            <div class="flex items-center bg-sky-900/60 p-1.5 rounded-xl border border-white/15">
+                <button id="btnViewAll" onclick="setMode('all')" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 bg-white text-sky-900 shadow">
+                    Visão Comparativa
+                </button>
+                <button id="btnViewAntes" onclick="setMode('antes')" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg text-white hover:text-amber-200 transition-all duration-200">
+                    Gargalos (Antes)
+                </button>
+                <button id="btnViewDepois" onclick="setMode('depois')" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg text-white hover:text-emerald-300 transition-all duration-200">
+                    Lean (Depois)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Banner / Lean Principles -->
+        <div class="bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-600 rounded-2xl p-0.5 shadow-md">
+            <div class="bg-white rounded-[15px] p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 text-xl font-bold">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Eliminação de Desperdícios Administrativos Lean</h2>
+                        <p class="text-sm text-slate-600">
+                            Foco em reduzir esperas, retrabalho, movimentações desnecessárias e duplicidade de informações <strong class="text-slate-800">sem contratar pessoal nem alterar prioridades clínicas</strong>.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-semibold shrink-0">
+                    <span class="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock"></i> Menos Espera
+                    </span>
+                    <span class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left"></i> Menos Retrabalho
+                    </span>
+                    <span class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-person-walking"></i> Menos Deslocamento
+                    </span>
+                    <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-coins"></i> Custo Zero de Pessoal
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Metric 1: Usuários na Recepção -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Usuários na Recepção</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="kpiUsuarios">13</h3>
+                    </div>
+                    <div class="p-3 bg-red-100 text-red-600 rounded-xl">
+                        <i class="fa-solid fa-users text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-medium text-red-600 gap-1">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>Acúmulo detectado no pico do diagnóstico</span>
+                </div>
+            </div>
+
+            <!-- Metric 2: Com Problemas de Doc -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Sem Documentação</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="kpiProblemas">4</h3>
+                    </div>
+                    <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
+                        <i class="fa-solid fa-file-circle-xmark text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-medium text-amber-700 gap-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Falta de atenção/orientação prévia</span>
+                </div>
+            </div>
+
+            <!-- Metric 3: Taxa de Correção Necessária -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Taxa de Correção</p>
+                        <h3 class="text-3xl font-extrabold text-orange-600 mt-1" id="kpiTaxa">30.8%</h3>
+                    </div>
+                    <div class="p-3 bg-orange-100 text-orange-600 rounded-xl">
+                        <i class="fa-solid fa-percent text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-medium text-orange-600 gap-1">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                    <span>Exige parada para correções no guichê</span>
+                </div>
+            </div>
+
+            <!-- Metric 4: Ganho de Tempo Estimado (Lean) -->
+            <div class="bg-white rounded-2xl p-5 border border-emerald-200 bg-gradient-to-br from-white to-emerald-50/40 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Meta / Redução Espera</p>
+                        <h3 class="text-3xl font-extrabold text-emerald-600 mt-1" id="kpiReducao">-65%</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-gauge-high text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs font-medium text-emerald-700 gap-1">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Estimativa após padronização Lean</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparative Workflows Section (ANTES vs DEPOIS) -->
+        <section class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Mapeamento da Jornada do Paciente</h2>
+                    <p class="text-sm text-slate-500">Comparação das etapas do fluxo administrativo antes e depois da implementação Lean</p>
+                </div>
+                <div class="text-xs text-slate-500 italic bg-slate-100 px-3 py-1 rounded-lg self-start sm:self-auto">
+                    * Simulação conceitual baseada nos dados do diagnóstico
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- ANTES: Gargalos -->
+                <div id="cardAntes" class="bg-white rounded-2xl border-2 border-red-200 p-5 shadow-sm space-y-4 transition-all">
+                    <div class="flex items-center justify-between border-b border-red-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-md">ANTES</span>
+                            <h3 class="font-bold text-slate-800 text-lg">Fluxo com Gargalos e Retrabalho</h3>
+                        </div>
+                        <span class="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
+                            ~3 min por paciente
+                        </span>
+                    </div>
+
+                    <!-- Flow Diagram Cards -->
+                    <div class="space-y-3">
+                        <!-- Step 01 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl border border-red-100 hover:bg-red-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">01</span>
+                            <div>
+                                <h4 class="font-semibold text-red-950 text-sm">Chegada Sem Orientação Prévia</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Usuários chegam com dúvidas e sem lista clara de documentos obrigatórios.</p>
+                                <span class="inline-block mt-1 text-[11px] font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>4 de 13 sem doc. por falta de atenção prévia
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Step 02 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl border border-red-100 hover:bg-red-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">02</span>
+                            <div>
+                                <h4 class="font-semibold text-red-950 text-sm">Fila na Recepção / Acúmulo</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Acúmulo de até 13 pacientes aguardando sem triagem preliminar visual.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 03 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl border border-red-100 hover:bg-red-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">03</span>
+                            <div>
+                                <h4 class="font-semibold text-red-950 text-sm">Conferência da Documentação no Atendimento</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Correções e preenchimento de cadastros durante a chamada no guichê.</p>
+                                <span class="inline-block mt-1 text-[11px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                                    <i class="fa-solid fa-clock mr-1"></i>30,8% dos atendimentos sofrem interrupções
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Step 04 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl border border-red-100 hover:bg-red-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">04</span>
+                            <div>
+                                <h4 class="font-semibold text-red-950 text-sm">Retorno e Retrabalho</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Espera prolongada, deslocamentos desnecessários para buscar cópias ou dados faltantes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEPOIS: Orientado Lean -->
+                <div id="cardDepois" class="bg-white rounded-2xl border-2 border-emerald-200 p-5 shadow-sm space-y-4 transition-all">
+                    <div class="flex items-center justify-between border-b border-emerald-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-md">DEPOIS</span>
+                            <h3 class="font-bold text-slate-800 text-lg">Fluxo Orientado e Padronizado (Lean)</h3>
+                        </div>
+                        <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                            ~1 min por paciente
+                        </span>
+                    </div>
+
+                    <!-- Flow Diagram Cards -->
+                    <div class="space-y-3">
+                        <!-- Step 01 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">01</span>
+                            <div>
+                                <h4 class="font-semibold text-emerald-950 text-sm">Orientação Antecipada</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Sinalização visual rápida e checklist de documentos disponível antes da entrada na fila.</p>
+                                <span class="inline-block mt-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                    <i class="fa-solid fa-circle-check mr-1"></i>Informativo claro reduz erro de documentação
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Step 02 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">02</span>
+                            <div>
+                                <h4 class="font-semibold text-emerald-950 text-sm">Fila Organizada e Sinalizada</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Organização de fluxo contínuo com encaminhamento visual simples e legível.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 03 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">03</span>
+                            <div>
+                                <h4 class="font-semibold text-emerald-950 text-sm">Conferência Padronizada</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Atendimento rápido com menos erros, dados validados com antecedência.</p>
+                                <span class="inline-block mt-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                    <i class="fa-solid fa-bolt mr-1"></i>Atendimento ágil e sem interrupções
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Step 04 -->
+                        <div class="flex items-start gap-3 p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">04</span>
+                            <div>
+                                <h4 class="font-semibold text-emerald-950 text-sm">Atendimento Direcionado</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Menos etapas repetidas, encaminhamento ágil e satisfação dos usuários.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Interactive Simulation & Chart Analytics Grid -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Interactive Simulator Controls (5 cols) -->
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-sky-600 text-lg"></i>
+                        <h3 class="font-bold text-slate-900 text-base">Simulador do Fluxo de Atendimento</h3>
+                    </div>
+                    <button onclick="resetSimulation()" class="text-xs text-slate-500 hover:text-sky-600 underline">Restaurar Padrões</button>
+                </div>
+
+                <!-- Control 1: Total Pacientes/Dia -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="simPacientes" class="font-semibold text-slate-700">Pacientes em Atendimento Simultâneo/Pico:</label>
+                        <span id="valPacientes" class="px-2 py-0.5 bg-sky-100 text-sky-800 font-bold rounded">13 pessoas</span>
+                    </div>
+                    <input type="range" id="simPacientes" min="5" max="40" value="13" class="w-full accent-sky-600 cursor-pointer" oninput="updateSimulation()">
+                    <div class="flex justify-between text-[10px] text-slate-400">
+                        <span>5 pac.</span>
+                        <span>Diagnóstico (13)</span>
+                        <span>40 pac.</span>
+                    </div>
+                </div>
+
+                <!-- Control 2: Taxa de Erro Doc (Antes) -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="simTaxaErro" class="font-semibold text-slate-700">Taxa Inicial de Falha na Documentação:</label>
+                        <span id="valTaxaErro" class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded">30.8%</span>
+                    </div>
+                    <input type="range" id="simTaxaErro" min="10" max="60" step="0.1" value="30.8" class="w-full accent-amber-500 cursor-pointer" oninput="updateSimulation()">
+                    <p class="text-[11px] text-slate-500">Representa usuários sem documentação completa ao chegar no guichê.</p>
+                </div>
+
+                <!-- Control 3: Tempo por Paciente Sem Lean -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="simTempoAntes" class="font-semibold text-slate-700">Tempo Médio Atendimento Sem Lean:</label>
+                        <span id="valTempoAntes" class="px-2 py-0.5 bg-red-100 text-red-800 font-bold rounded">3.0 min</span>
+                    </div>
+                    <input type="range" id="simTempoAntes" min="1.5" max="6.0" step="0.5" value="3.0" class="w-full accent-red-500 cursor-pointer" oninput="updateSimulation()">
+                </div>
+
+                <!-- Simulation Output Metrics Card -->
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Resultados da Simulação</h4>
+                    
+                    <div class="grid grid-cols-2 gap-3 text-center">
+                        <div class="p-2.5 bg-white rounded-lg border border-red-100">
+                            <span class="text-[11px] text-slate-500 block">Tempo Total Espera (Antes)</span>
+                            <span id="resEsperaAntes" class="text-lg font-black text-red-600">39 min</span>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-lg border border-emerald-100">
+                            <span class="text-[11px] text-slate-500 block">Tempo Total Espera (Depois)</span>
+                            <span id="resEsperaDepois" class="text-lg font-black text-emerald-600">13 min</span>
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 bg-emerald-100/70 border border-emerald-200 rounded-lg text-center">
+                        <span class="text-xs text-emerald-900 font-medium">Economia Estimada por Lote de Atendimento:</span>
+                        <div id="resEconomia" class="text-xl font-black text-emerald-700">26 minutos poupados</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Charts & Analytics (7 cols) -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Chart 1: Comparativo de Tempos de Espera -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-sky-600"></i>
+                            Tempo Acumulado de Atendimento (Antes vs Depois)
+                        </h3>
+                        <span class="text-xs text-slate-400">Em minutos</span>
+                    </div>
+                    <div class="h-56 relative">
+                        <canvas id="chartTempos"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Taxa de Erros e Retrabalho -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                            Incidência de Problemas de Documentação
+                        </h3>
+                        <span class="text-xs text-slate-400">% de Usuários Impactados</span>
+                    </div>
+                    <div class="h-48 relative">
+                        <canvas id="chartErros"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Summary & Next Steps Section -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-sky-600"></i>
+                Próximos Passos & Diretrizes de Implementação
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+                <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
+                    <div class="font-bold text-sky-900 mb-1 flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-xs">1</span>
+                        Sinalização Visual
+                    </div>
+                    <p class="text-slate-600">Instalar painel informativo na entrada com a lista física/digital de documentos necessários antes da entrada da fila.</p>
+                </div>
+
+                <div class="p-4 rounded-xl bg-amber-50 border border-amber-100">
+                    <div class="font-bold text-amber-900 mb-1 flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs">2</span>
+                        Padronização no Guichê
+                    </div>
+                    <p class="text-slate-600">Adotar roteiro simplificado de triagem de cadastros para evitar interrupções de fluxo durante o atendimento.</p>
+                </div>
+
+                <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <div class="font-bold text-emerald-900 mb-1 flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">3</span>
+                        Monitoramento Contínuo
+                    </div>
+                    <p class="text-slate-600">Medir os tempos reais pós-melhorias e ajustar o leiaute conforme a variação de demanda do posto de saúde.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 mt-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p class="font-semibold text-slate-300">Jornada GERAR - Diagnóstico Lean no Setor de Saúde</p>
+            <p>Simulação conceitual desenvolvida para otimização de fluxos administrativos em Postos de Saúde.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global State & Chart instances
+        let chartTemposInstance = null;
+        let chartErrosInstance = null;
+
+        // On Load initialization
+        window.onload = function() {
+            initCharts();
+            updateSimulation();
+        };
+
+        // Switch modes (All / Antes Only / Depois Only)
+        function setMode(mode) {
+            const cardAntes = document.getElementById('cardAntes');
+            const cardDepois = document.getElementById('cardDepois');
+            
+            const btnAll = document.getElementById('btnViewAll');
+            const btnAntes = document.getElementById('btnViewAntes');
+            const btnDepois = document.getElementById('btnViewDepois');
+
+            // Reset styles
+            [btnAll, btnAntes, btnDepois].forEach(btn => {
+                btn.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg text-white hover:text-amber-200 transition-all duration-200";
+            });
+
+            if (mode === 'all') {
+                cardAntes.classList.remove('hidden');
+                cardDepois.classList.remove('hidden');
+                btnAll.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 bg-white text-sky-900 shadow";
+            } else if (mode === 'antes') {
+                cardAntes.classList.remove('hidden');
+                cardDepois.classList.add('hidden');
+                btnAntes.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 bg-white text-red-700 shadow";
+            } else if (mode === 'depois') {
+                cardAntes.classList.add('hidden');
+                cardDepois.classList.remove('hidden');
+                btnDepois.className = "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 bg-white text-emerald-700 shadow";
+            }
+        }
+
+        // Initialize Chart.js
+        function initCharts() {
+            // Chart 1: Bar Chart comparing total processing time
+            const ctxTempos = document.getElementById('chartTempos').getContext('2d');
+            chartTemposInstance = new Chart(ctxTempos, {
+                type: 'bar',
+                data: {
+                    labels: ['Gargalos (Antes)', 'Fluxo Lean (Depois)'],
+                    datasets: [{
+                        label: 'Tempo Acumulado de Atendimento (min)',
+                        data: [39, 13],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.85)',
+                            'rgba(16, 185, 129, 0.85)'
+                        ],
+                        borderColor: [
+                            'rgb(220, 38, 38)',
+                            'rgb(5, 150, 105)'
+                        ],
+                        borderWidth: 1.5,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Total: ${context.parsed.y} minutos`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Minutos Totais'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Error percentages comparison
+            const ctxErros = document.getElementById('chartErros').getContext('2d');
+            chartErrosInstance = new Chart(ctxErros, {
+                type: 'bar',
+                data: {
+                    labels: ['Início (Diagnóstico)', 'Meta Pós-Lean'],
+                    datasets: [{
+                        label: '% com Erros de Documentação',
+                        data: [30.8, 5.0],
+                        backgroundColor: [
+                            'rgba(249, 115, 22, 0.85)',
+                            'rgba(2, 132, 199, 0.85)'
+                        ],
+                        borderColor: [
+                            'rgb(234, 88, 12)',
+                            'rgb(3, 105, 161)'
+                        ],
+                        borderWidth: 1.5,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 60,
+                            title: {
+                                display: true,
+                                text: 'Porcentagem (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Live simulation calculation engine
+        function updateSimulation() {
+            const pacientes = parseInt(document.getElementById('simPacientes').value);
+            const taxaErro = parseFloat(document.getElementById('simTaxaErro').value);
+            const tempoAntesUnit = parseFloat(document.getElementById('simTempoAntes').value);
+
+            // Update Labels
+            document.getElementById('valPacientes').innerText = `${pacientes} pessoas`;
+            document.getElementById('valTaxaErro').innerText = `${taxaErro.toFixed(1)}%`;
+            document.getElementById('valTempoAntes').innerText = `${tempoAntesUnit.toFixed(1)} min`;
+
+            // Calculate Metrics
+            // Antes: pacientes * tempoAntesUnit + penalidade do retrabalho proporcional à taxa de erro
+            const tempoAntesTotal = Math.round(pacientes * tempoAntesUnit * (1 + (taxaErro / 100) * 0.4));
+
+            // Depois: Lean reduz tempo unitário para ~1 min e reduz drasticamente a taxa de erro para ~5%
+            const tempoDepoisUnit = Math.max(1.0, tempoAntesUnit * 0.35); // ~65% mais rápido
+            const taxaErroDepois = Math.max(2.0, taxaErro * 0.15); // redução de 85% nos erros
+            const tempoDepoisTotal = Math.round(pacientes * tempoDepoisUnit * (1 + (taxaErroDepois / 100) * 0.2));
+
+            const economia = tempoAntesTotal - tempoDepoisTotal;
+            const pctReducao = Math.round(((tempoAntesTotal - tempoDepoisTotal) / tempoAntesTotal) * 100);
+
+            // Update Simulation Results UI
+            document.getElementById('resEsperaAntes').innerText = `${tempoAntesTotal} min`;
+            document.getElementById('resEsperaDepois').innerText = `${tempoDepoisTotal} min`;
+            document.getElementById('resEconomia').innerText = `${economia} minutos poupados (${pctReducao}% mais rápido)`;
+
+            // Update Dashboard KPIs dynamically
+            document.getElementById('kpiUsuarios').innerText = pacientes;
+            const problemasEstimados = Math.round(pacientes * (taxaErro / 100));
+            document.getElementById('kpiProblemas').innerText = problemasEstimados;
+            document.getElementById('kpiTaxa').innerText = `${taxaErro.toFixed(1)}%`;
+            document.getElementById('kpiReducao').innerText = `-${pctReducao}%`;
+
+            // Update Charts
+            if (chartTemposInstance) {
+                chartTemposInstance.data.datasets[0].data = [tempoAntesTotal, tempoDepoisTotal];
+                chartTemposInstance.update();
+            }
+
+            if (chartErrosInstance) {
+                chartErrosInstance.data.datasets[0].data = [taxaErro, taxaErroDepois.toFixed(1)];
+                chartErrosInstance.update();
+            }
+        }
+
+        // Reset inputs to original diagnostic data
+        function resetSimulation() {
+            document.getElementById('simPacientes').value = 13;
+            document.getElementById('simTaxaErro').value = 30.8;
+            document.getElementById('simTempoAntes').value = 3.0;
+            updateSimulation();
+        }
+    </script>
+</body>
+</html>
